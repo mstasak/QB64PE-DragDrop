@@ -5,11 +5,13 @@
 
 Type DragDropSourceStruct
     As Integer x1, x2, y1, y2 ' ,categoryId
-    As Long col
+    'As Long col
+	as integer row, col
 End Type
 
-Type DragDragDropTargetStruct
+Type DragDropTargetStruct
     As Integer x1, x2, y1, y2 ' ,categoryId
+	as integer row, col
 End Type
 
 Dim Shared As _Byte DragDropState
