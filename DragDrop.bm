@@ -1,0 +1,132 @@
+'DragDrop.bm
+'Drag a rectangular area and drop it on a target rectangle, in graphics mode.
+'DragDrop methods
+
+'between()% - test if v% is between vMin% and vMax%
+Function between% (v%, vMin%, vMax%)
+    between% = v% >= vMin% _AndAlso v% <= vMax%
+End Function
+
+'set up to perform drags and drops
+Sub DragDropInit
+    DragDropState = 1
+End Sub
+
+'monitor mouse and perform drag operations on screen
+Sub DragDropDoEvents
+    Dim As _Byte mouseInputReady, lPressed, lReleased
+    Dim As Integer mX, mY
+    mX = DragDropMouseX
+    mY = DragDropMouseY
+
+    Do
+        mouseInputReady = _MouseInput
+        If mouseInputReady Then
+            lPressed = _MouseButton(1)
+            mX = _MouseX
+            mY = _MouseY
+            If DragDropState = 1 _AndAlso lPressed Then
+                DragDropBegin mX, mY
+            End If
+            If DragDropState = 2 _AndAlso Not lPressed Then
+                lReleased = _TRUE
+                Exit Do
+            End If
+        End If
+    Loop While mouseInputReady
+    If DragDropState = 2 _AndAlso lReleased Then
+        DragDropEnd mX, mY
+        Do 'flush pending mouse events
+            mouseInputReady = _MouseInput
+        Loop While mouseInputReady
+    ElseIf DragDropState = 2 _AndAlso ((mX <> DragDropMouseX) Or (mY <> DragDropMouseY)) Then
+        'move drag image
+        DragDropImageShow (_FALSE)
+        DragDropMouseX = mX
+        DragDropMouseY = mY
+        DragDropImageShow (_TRUE)
+    End If
+End Sub
+
+'shut down DragDrop, release resources
+Sub DragDropTerminate
+    If DragDropState = 2 Then DragDropImageShow _FALSE
+    DragDropReleaseImages
+    DragDropState = 6
+End Sub
+
+'show or hide the image being dragged over the screen, at the mouse cursor
+Sub DragDropImageShow (visible%)
+    Dim tile As DragDropSourceStruct
+    tile = DragDropSources(DragDropSourceIndex)
+    If visible% Then
+        'save bg from current loc
+        _PutImage , Scrn, DragDropBg, (DragDropMouseX + DragDropImageDX, DragDropMouseY + DragDropImageDY)-(DragDropMouseX + DragDropImageDX + tile.x2 - tile.x1, DragDropMouseY + DragDropImageDY + tile.y2 - tile.y1)
+        _PutImage (DragDropMouseX + DragDropImageDX, DragDropMouseY + DragDropImageDY), DragDropImage, Scrn
+    Else
+        _PutImage (DragDropMouseX + DragDropImageDX, DragDropMouseY + DragDropImageDY), DragDropBg, Scrn
+    End If
+End Sub
+
+'when left button is down, this is called to begin dragging
+Sub DragDropBegin (x%, y%)
+    Dim As Integer i
+    Dim tile As DragDropSourceStruct
+    For i = LBound(DragDropSources) To UBound(DragDropSources)
+        tile = DragDropSources(i)
+        if between(x%, tile.x1,tile.x2) _andalso _
+           between(y%, tile.y1,tile.y2) then
+            'keep selected object
+            DragDropSourceIndex = i
+            DragDropMouseX = x%
+            DragDropMouseY = y%
+            DragDropImageDX = tile.x1 - x% 'offset from mouse point to top left corner of drag source
+            DragDropImageDY = tile.y1 - y%
+            DragDropReleaseImages 'drop and recreate images based on current drag source size
+            'save bg from current loc
+            DragDropBg = _NewImage(tile.x2 - tile.x1 + 1, tile.y2 - tile.y1 + 1, 32)
+            '_PutImage , Scrn, DragDropBg, (tile.x1, tile.y1)-(tile.x2, tile.y2)
+            'set up draggable drop, nodrop images
+            DragDropImage = _NewImage(tile.x2 - tile.x1 + 1, tile.y2 - tile.y1 + 1, 32)
+            _PutImage , Scrn, DragDropImage, (tile.x1, tile.y1)-(tile.x2, tile.y2)
+            'draw drag image
+            DragDropImageShow _TRUE
+            DragDropState = 2 'dragging
+            Exit Sub
+        End If
+    Next i
+End Sub
+
+'called when dragging, after user releases left mouse button
+Sub DragDropEnd (x%, y%)
+    Dim i As Integer, target As DragDragDropTargetStruct
+    'verify valid drop target
+    DragDropTargetIndex = -1
+    DragDropState = 4 '4 if invalid drop target
+    For i = LBound(DragDropTargets) To UBound(DragDropTargets)
+        target = DragDropTargets(i)
+        If between(x%, target.x1, target.x2) _AndAlso between(y%, target.y1, target.y2) Then
+            DragDropState = 5 'valid drop target
+            DragDropTargetIndex = i
+            Exit For
+        End If
+    Next i
+    DragDropImageShow _FALSE
+End Sub
+
+'begin another dragdrop cycle (start paiting for left mouse button press again)
+Sub DragDropResume
+    DragDropState = 1
+End Sub
+
+'free inmage resources
+Sub DragDropReleaseImages
+    If DragDropImage <> 0 Then
+        _FreeImage DragDropImage
+        DragDropImage = 0
+    End If
+    If DragDropBg <> 0 Then
+        _FreeImage DragDropBg
+        DragDropBg = 0
+    End If
+End Sub
