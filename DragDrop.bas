@@ -2,7 +2,7 @@
 'QB64PE 4.2.0/Windows
 'Drag a rectangular area and drop it on a target rectangle, in graphics mode.
 'Drag sources could use transparency to present a non-rectangular shape within a transparent border.
-'User code is responsible for updating the screen after drops (line 96 below).
+'User code is responsible for updating the screen after drops (line 89 below).
 
 Option _Explicit
 Dim Shared Scrn As Long
@@ -210,7 +210,7 @@ Sub DragDropEnd (x%, y%)
     DragDropImageShow _FALSE
 End Sub
 
-'begin another dragdrop cycle (start paiting for left mouse button press again)
+'begin another dragdrop cycle (start waiting for left mouse button press again)
 Sub DragDropResume
     DragDropState = 1
 End Sub
